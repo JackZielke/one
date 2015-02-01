@@ -49,6 +49,7 @@ protected:
 
     Scheduler():
         hpool(0),
+        hhpool(0),
         clpool(0),
         vmpool(0),
         vmapool(0),
@@ -68,6 +69,7 @@ protected:
     virtual ~Scheduler()
     {
         delete hpool;
+        delete hhpool;
         delete clpool;
 
         delete vmpool;
@@ -85,8 +87,9 @@ protected:
     // Pools
     // ---------------------------------------------------------------
 
-    HostPoolXML *    hpool;
-    ClusterPoolXML * clpool;
+    HostPoolXML *       hpool;
+    HybridHostPoolXML * hhpool;
+    ClusterPoolXML *    clpool;
 
     VirtualMachinePoolXML *       vmpool;
     VirtualMachineActionsPoolXML* vmapool;

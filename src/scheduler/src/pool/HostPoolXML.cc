@@ -16,24 +16,48 @@
 
 #include "HostPoolXML.h"
 
+void HostPoolXML::print_hosts(ostringstream& oss)
+{
+    map<int,ObjectXML*>::iterator it;
+
+    for (it=objects.begin();it!=objects.end();it++)
+    {
+        oss << " " << it->first;
+    }
+}
+
+/* -------------------------------------------------------------------------- */
+/* -------------------------------------------------------------------------- */
+
 int HostPoolXML::set_up()
 {
-    ostringstream   oss;
-    int             rc;
+    int rc = PoolXML::set_up();
 
-    rc = PoolXML::set_up();
-
-    if ( rc == 0 )
+    if ( rc == 0)
     {
-        oss.str("");
+        ostringstream oss;
+
         oss << "Discovered Hosts (enabled):" << endl;
+        print_hosts(oss);
 
-        map<int,ObjectXML*>::iterator it;
+        NebulaLog::log("HOST",Log::DEBUG,oss);
+    }
 
-        for (it=objects.begin();it!=objects.end();it++)
-        {
-            oss << " " << it->first;
-        }
+    return rc;
+}
+
+/* -------------------------------------------------------------------------- */
+
+int HybridHostPoolXML::set_up()
+{
+    int rc = PoolXML::set_up();
+
+    if ( rc == 0)
+    {
+        ostringstream oss;
+
+        oss << "Discovered Hybrid Hosts (enabled):" << endl;
+        print_hosts(oss);
 
         NebulaLog::log("HOST",Log::DEBUG,oss);
     }

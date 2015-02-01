@@ -30,9 +30,9 @@ public:
 
     HostPoolXML(Client* client):PoolXML(client) {};
 
-    ~HostPoolXML(){};
+    virtual ~HostPoolXML(){};
 
-    int set_up();
+    virtual int set_up();
 
     /**
      *  Gets an object from the pool
@@ -55,14 +55,39 @@ public:
 
 protected:
 
-    int get_suitable_nodes(vector<xmlNodePtr>& content)
+    virtual int get_suitable_nodes(vector<xmlNodePtr>& content)
     {
-        return get_nodes("/HOST_POOL/HOST[STATE=1 or STATE=2]", content);
+        return get_nodes("/HOST_POOL/HOST[STATE=1 or STATE=2 and"
+            " not(TEMPLATE/PUBLIC_CLOUD) or"
+            " not(contains(TEMPLATE/PUBLIC_CLOUD,'YES'))]", 
+            content);
     };
 
     void add_object(xmlNodePtr node);
 
     int load_info(xmlrpc_c::value &result);
+
+    void print_hosts(ostringstream& oss);
+};
+
+class HybridHostPoolXML : public HostPoolXML
+{
+public:
+
+    HybridHostPoolXML(Client* client): HostPoolXML(client){};
+
+    virtual ~HybridHostPoolXML(){};
+
+    virtual int set_up();
+
+protected:
+
+    virtual int get_suitable_nodes(vector<xmlNodePtr>& content)
+    {
+        return get_nodes("/HOST_POOL/HOST[STATE=1 or STATE=2 and"
+            " contains(TEMPLATE/PUBLIC_CLOUD,'YES')]", 
+            content);
+    };
 };
 
 #endif /* HOST_POOL_XML_H_ */

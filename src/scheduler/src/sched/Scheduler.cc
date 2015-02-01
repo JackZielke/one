@@ -284,6 +284,7 @@ void Scheduler::start()
     // -------------------------------------------------------------------------
 
     hpool  = new HostPoolXML(client);
+    hhpool = new HybridHostPoolXML(client);
     clpool = new ClusterPoolXML(client);
     vmpool = new VirtualMachinePoolXML(client,machines_limit,(live_rescheds==1));
 
@@ -420,6 +421,13 @@ int Scheduler::set_up_pools()
         return rc;
     }
 
+    rc = hhpool->set_up();
+
+    if ( rc != 0 )
+    {
+        return rc;
+    }
+
     //--------------------------------------------------------------------------
     //Cleans the cache and get the cluster information
     //--------------------------------------------------------------------------
@@ -436,6 +444,7 @@ int Scheduler::set_up_pools()
     //--------------------------------------------------------------------------
 
     hpool->merge_clusters(clpool);
+    hhpool->merge_clusters(clpool);
 
     //--------------------------------------------------------------------------
     //Cleans the cache and get the ACLs
