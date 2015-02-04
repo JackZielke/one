@@ -463,6 +463,118 @@ int Scheduler::set_up_pools()
 /* -------------------------------------------------------------------------- */
 /* -------------------------------------------------------------------------- */
 
+
+/**
+ *  Match hosts for this VM that:
+ *    1. Fulfills ACL
+ *    2. Meets user/policy requirements
+ *    3. Have enough capacity to host the VM
+ *
+ *  @param vm the virtual machine
+ *  @param vm_memory vm requirement 
+ *  @param vm_cpu vm requirement
+ *  @param vm_disk vm requirement
+ *  @param host to evaluate vm assgiment
+ *  @param n_auth number of authorization access errors, incremented if needed
+ *  @param n_error number of requirement errors, incremented if needed
+ *  @param error, string describing why the host is not valid
+ *  @return true for a positive match
+ */
+static bool match_host(AclXML * acls, VirtualMachineXML* vm, int vmem, int vcpu, 
+    long long vdisk, HostXML * host, int &n_auth, int& n_error, string &error)
+{
+    // -------------------------------------------------------------------------
+    // Filter current Hosts for resched VMs
+    // -------------------------------------------------------------------------
+    if (vm->is_resched() && vm->get_hid() == host->get_hid())
+    {
+        error = "VM cannot be migrated to its current Host.";
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Check if user is authorized
+    // -------------------------------------------------------------------------
+    if ( vm->get_uid() != 0 && vm->get_gid() != 0 )
+    {
+        PoolObjectAuth hperms;
+
+        hperms.oid      = host->get_hid();
+        hperms.cid      = host->get_cid();
+        hperms.obj_type = PoolObjectSQL::HOST;
+
+        // Only include the VM group ID
+
+        set<int> gids;
+        gids.insert(vm->get_gid());
+
+        if ( !acls->authorize(vm->get_uid(), gids, hperms, AuthRequest::MANAGE))
+        {
+            error = "Permission denied.";        
+            return false;            
+        }
+    }
+
+    n_auth++;
+
+    // -------------------------------------------------------------------------
+    // Check host capacity
+    // -------------------------------------------------------------------------
+    if (host->test_capacity(vcpu,vmem) != true)
+    {
+        error = "Not enough capacity.";
+        return false;
+    }
+
+    // -------------------------------------------------------------------------
+    // Evaluate VM requirements
+    // -------------------------------------------------------------------------
+    if (!vm->get_requirements().empty())
+    {
+#ifdef SCHEDPROF
+        ostringstream debug;
+        time_t debug_t_0 = time(0);
+#endif
+        char * estr;
+        bool   matched;
+
+        if ( host->eval_bool(vm->get_requirements(), matched, &estr) != 0 )
+        {
+            ostringstream oss;
+    
+            matched = false;
+            n_error++;
+
+            oss << "Error in SCHED_REQUIREMENTS: '" << vm->get_requirements()
+                << "', error: " << estr;
+    
+            vm->log(oss.str());
+
+            error = oss.str();
+
+            free(estr);
+
+            return false;
+        }
+
+#ifdef SCHEDPROF
+        time_t debug_t_1 = time(0);
+        debug << "eval_bool() time: " << debug_t_1 - debug_t_0 << endl;
+
+        NebulaLog::log("PROFL", Log::DEBUG, debug);
+#endif
+        if (matched == false)
+        {
+            error = "It does not fulfill SCHED_REQUIREMENTS.";
+            return false;
+        }
+    }
+
+    return true;
+};
+
+/* -------------------------------------------------------------------------- */
+
 void Scheduler::match_schedule()
 {
     VirtualMachineXML * vm;
